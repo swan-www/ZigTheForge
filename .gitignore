@@ -171,6 +171,5 @@ xcuserdata/
 #Benchmarks
 /**/**Benchmarks/**
 
-#clang-format
-Tools/clang-tools/clang-format-files.txt
-Tools/clang-tools/out-files.txt
+#ziglang
+toolchain/common/ziglang/
