@@ -172,4 +172,5 @@ xcuserdata/
 /**/**Benchmarks/**
 
 #ziglang
-toolchain/common/ziglang/
+toolchain/common/ziglang/*
+!toolchain/common/ziglang/satellite.json
