@@ -33,7 +33,7 @@
 
 # Visual Studio
 **/.vs/
-**/.vscode/
+**/.vscode/**
 **/x64/
 **.vcxproj.user
 **.user
@@ -179,4 +179,5 @@ toolchain/common/zls/*
 /**/zig-out/
 
 #vscode task jsons
-!/**/.vscode/*.json
+!**/.vscode/launch.json
+!**/.vscode/tasks.json
