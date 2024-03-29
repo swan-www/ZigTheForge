@@ -179,5 +179,5 @@ toolchain/common/zls/*
 /**/zig-out/
 
 #vscode task jsons
-!.vscode/launch.json
-!.vscode/tasks.json
+!/.vscode/launch.json
+!/.vscode/tasks.json
