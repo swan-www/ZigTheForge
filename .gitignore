@@ -177,3 +177,7 @@ toolchain/common/ziglang/*
 toolchain/common/zls/*
 /**/zig-cache/
 /**/zig-out/
+
+#vscode task jsons
+!vscode/launch.json
+!vscode/tasks.json
