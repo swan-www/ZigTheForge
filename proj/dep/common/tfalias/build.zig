@@ -1,5 +1,28 @@
 const std = @import("std");
 const alias_build_util = @import("alias_build_util");
+const code_reminder_build = @import("code_reminder");
+const code_reminder = code_reminder_build.code_reminder;
+
+//Type shortening
+const Dir = alias_build_util.Dir;
+const File = alias_build_util.File;
+
+pub const CodeReminderErrors = error
+{
+	AllowReturningErrorWithValue
+};
+
+pub const CodeReminders = struct
+{
+	AllowReturningErrorWithValue: code_reminder.CodeReminder,
+
+	pub fn init(options: code_reminder.CodeReminderOptions) CodeReminders
+	{
+		return  .{
+			.AllowReturningErrorWithValue = code_reminder.CodeReminder.buildInit(options, 2647, CodeReminderErrors.AllowReturningErrorWithValue),
+		};
+	}
+};
 
 const GetPathErrors = error{ OutOfMemory, NotFound, PathTooLong, PlatformNotSupported } || std.mem.Allocator.Error;
 
@@ -59,29 +82,29 @@ pub fn getWinSDKDesc(host : std.Target, allocator : std.mem.Allocator) GetPathEr
     }
 }
 
-pub fn getFXCDir(host : std.Target, allocator : std.mem.Allocator) ![]const u8
+pub fn getFXCDir(host : std.Target, allocator : std.mem.Allocator) !Dir
 {
     const WinFunc = struct
     {
-        pub fn getFXCDir(in_host : std.Target, in_allocator : std.mem.Allocator) ![]const u8
+        pub fn getFXCDir(in_host : std.Target, in_allocator : std.mem.Allocator) !Dir
         {
-            const winSDKDesc = try getWinSDKDesc(in_host, in_allocator);
-            defer winSDKDesc.free(in_allocator);           
+            const win_sdk_desc = try getWinSDKDesc(in_host, in_allocator);
+            defer win_sdk_desc.free(in_allocator);       
 
-            return std.fs.path.resolve(
-                in_allocator,
-                &.{
-                    winSDKDesc.path,
-                    "/bin/",
-                    winSDKDesc.version,
-                    "/",
-                    switch(in_host.cpu.arch)
+			return alias_build_util.buildAbsolutePathAndGetDirectory(
+				in_allocator,
+				&.{
+					win_sdk_desc.path,
+					"/bin/",
+					win_sdk_desc.version,
+					"/",
+					switch(in_host.cpu.arch)
                     {
                         .x86_64 => "x64",
                         else => return GetPathErrors.PlatformNotSupported
                     }
-                }
-            );
+				}
+			);
         }
     };
 
@@ -92,20 +115,17 @@ pub fn getFXCDir(host : std.Target, allocator : std.mem.Allocator) ![]const u8
     }
 }
 
-pub fn getDXCDir(host: std.Target, allocator : std.mem.Allocator) ![]const u8
+pub fn getDXCDir(host: std.Target, allocator : std.mem.Allocator) !Dir
 {
     const WinFunc = struct
     {
-        pub fn getDXCDir(in_host: std.Target,in_allocator : std.mem.Allocator) ![]const u8
+        pub fn getDXCDir(in_host: std.Target,in_allocator : std.mem.Allocator) !Dir
         {
-            const tfalias_dir = try alias_build_util.getTFAliasDirectory(in_allocator);
-            defer in_allocator.free(tfalias_dir);
-
-            return std.fs.path.resolve(
+			const dxc_sub_path = try std.mem.join(
                 in_allocator,
+				"",
                 &.{
-                    tfalias_dir,
-                    "/Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/bin/",
+                    "Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/bin/",
                     switch(in_host.cpu.arch)
                     {
                         .x86_64 => "x64",
@@ -113,6 +133,12 @@ pub fn getDXCDir(host: std.Target, allocator : std.mem.Allocator) ![]const u8
                     },
                 }
             );
+			defer in_allocator.free(dxc_sub_path);
+
+			var tfalias_dir = try alias_build_util.getTFAliasDirectory(in_allocator);
+			defer tfalias_dir.close();
+
+			return alias_build_util.getDirAsSubpathFromDir(tfalias_dir, in_allocator, dxc_sub_path);
         }
     };
 
@@ -123,49 +149,27 @@ pub fn getDXCDir(host: std.Target, allocator : std.mem.Allocator) ![]const u8
     }
 }
 
-pub fn getPythonExecutablePath(allocator : std.mem.Allocator) ![]const u8
+pub fn getPythonExecutableFile(allocator : std.mem.Allocator) !File
 {
-    const tfalias_dir = try alias_build_util.getTFAliasDirectory(in_allocator);
-    defer allocator.free(tfalias_dir);
-
-    return std.fs.path.resolve
-    (
-        allocator,
-        &.{
-            tfalias_dir,
-            "/Tools/python-3.6.0-embed-amd64/python.exe",
-        }
-    );
+    var tfalias_dir = try alias_build_util.getTFAliasDirectory(allocator);
+	defer tfalias_dir.close();
+	var python_exe_dir = try alias_build_util.getDirAsSubpathFromDir(tfalias_dir, allocator, "Tools/python-3.6.0-embed-amd64/");
+	defer python_exe_dir.close();
+	return python_exe_dir.openFile(allocator, "python.exe", .{});
 }
 
-pub fn getFSLPath(allocator : std.mem.Allocator) ![]const u8
+pub fn getFSLDir(allocator : std.mem.Allocator) !Dir
 {
-    const tfalias_dir = try alias_build_util.getTFAliasDirectory(in_allocator);
-    defer allocator.free(tfalias_dir);
-
-    return std.fs.path.resolve
-    (
-        allocator,
-        &.{
-            tfalias_dir,
-            "/Common_3/Tools/ForgeShadingLanguage",
-        }
-    );
+	var tfalias_dir = try alias_build_util.getTFAliasDirectory(allocator);
+	defer tfalias_dir.close();
+	return alias_build_util.getDirAsSubpathFromDir(tfalias_dir, allocator, "Common_3/Tools/ForgeShadingLanguage");
 }
 
-pub fn getFSLPyPath(allocator : std.mem.Allocator) ![]const u8
+pub fn getFSLPyFile(allocator : std.mem.Allocator) !File
 {
-    const fsl_dir = try alias_build_util.getFSLPath(in_allocator);
-    defer allocator.free(tfalias_dir);
-
-    return std.fs.path.resolve
-    (
-        allocator,
-        &.{
-            fsl_dir,
-            "/fsl.py",
-        }
-    );
+	var fsl_dir = try getFSLDir(allocator);
+	defer fsl_dir.close();
+	return fsl_dir.openFile(allocator, "fsl.py", .{});
 }
 
 const CompileShadersOptions = struct
@@ -175,27 +179,45 @@ const CompileShadersOptions = struct
     gfx_sdk_langs: []const []const u8,
     output_dir: []const u8,
     binary_output_dir: []const u8,
-    
+	max_output_bytes: usize,
+	code_reminder_opt: ?code_reminder.CodeReminderOptions,
 };
 
 pub fn compileShaders(options: CompileShadersOptions) !void
 {
-    const fxc_dir = try getFXCDir(options.b.host.result, options.b.allocator);
-    defer options.b.allocator.free(fxc_dir);
-    const dxc_dir = try getDXCDir(options.b.host.result, options.b.allocator);
-    defer options.b.allocator.free(dxc_dir);
+	const opt_build_code_reminders : ?CodeReminders = if(options.code_reminder_opt) |opt| CodeReminders.init(opt) else null;
 
-    const python_exe = try getPythonExecutablePath(options.b.allocator);
-    defer options.b.allocator.free(python_exe);
+    var fxc_dir = try getFXCDir(options.b.host.result, options.b.allocator);
+    defer fxc_dir.close();
+    var dxc_dir = try getDXCDir(options.b.host.result, options.b.allocator);
+   	defer dxc_dir.close();
+
+    var python_exe = try getPythonExecutableFile(options.b.allocator);
+    defer python_exe.close();
     const language_string = try std.mem.join(options.b.allocator, " ", options.gfx_sdk_langs);
     defer options.b.allocator.free(language_string);
 
+	var fsl_py_file = try getFSLPyFile(options.b.allocator);
+	defer fsl_py_file.close();
+
+	if(opt_build_code_reminders) |build_code_reminders|
+	{
+		build_code_reminders.AllowReturningErrorWithValue.buildCheck(options.b, @src(), "Update to return information of failed process.");
+	}
+
+	var env_map = std.process.EnvMap.init(options.b.allocator);	
+	defer env_map.deinit();
+
+	env_map.put("FSL_COMPILER_FXC", fxc_dir);
+	env_map.put("FSL_COMPILER_DXC", dxc_dir);
+
+    var any_process_failures = false;
+    const Term = std.ChildProcess.Term;
     for(options.shader_files) |shaderFile|
     {
-        const FSLProcess = std.ChildProcess.init(
-            &.{
-                python_exe,
-                try getFSLPyPath(),
+		const argv = &.{
+                python_exe.str,
+                fsl_py_file.str,
                 shaderFile,
                 "--destination",
                 options.output_dir,
@@ -206,10 +228,52 @@ pub fn compileShaders(options: CompileShadersOptions) !void
                 "--incremental",
                 "--compile",
                 "--verbose"
-            }, 
-            options.b.allocator
-        );
+		};
+
+		const result = std.ChildProcess.run(
+		.{
+			.allocator = options.b.allocator,			
+            .argv = argv, 
+            .env_map = env_map,
+			.max_output_bytes = options.max_output_bytes,
+		});
+
+		if (result) |term|
+		{
+			switch(term)
+			{
+				Term.Exited => |exit_code| if(exit_code != 0) {any_process_failures = true;} else {std.log.err("FSL process exited with non-zero code {d}; arguments '{}'", .{exit_code, argv});},
+				Term.Signal => |signal_code| std.log.err("FSL process was signalled with code {d}; arguments '{}'", .{signal_code, argv}),
+				Term.Stopped => |stop_code| std.log.err("FSL process was stopped with code {d}; arguments '{}'", .{stop_code, argv}),
+				Term.Unknown => |unknown_code| std.log.err("FSL process reached unknown state with code {d}; arguments '{}'", .{unknown_code, argv}),
+          		else => std.log.err("FSL failed to compile with arguments '{}'", .{argv}),
+			}
+		} 
+		else |err|
+		{
+  			std.log.err("FSL failed to compile with process error '{s}'' and arguments '{}'", .{@errorName(err), argv});
+			continue;
+		}
     }
+}
+
+const CopyResourcesOptions = struct
+{
+    b: *std.Build,
+    resource_source_dir: []const u8,
+    resource_output_dir: []const u8,
+	exclude_extensions: []const []const u8,
+	include_extensions: ?[]const []const u8,
+};
+
+pub fn copyResources(options: CopyResourcesOptions) void
+{
+	options.b.installDirectory(.{
+		.source_dir = options.resource_source_dir,
+		.install_dir = options.resource_output_dir,
+		.exclude_extensions = options.exclude_extensions,
+		.include_extensions = options.include_extensions
+	});
 }
 
 pub fn build(b: *std.Build) !void
@@ -217,11 +281,17 @@ pub fn build(b: *std.Build) !void
     _ = b.standardTargetOptions(.{});
     _ = b.standardOptimizeOption(.{});
 
-    const fxcDir = try getFXCDir(b.host.result, b.allocator);
-    defer b.allocator.free(fxcDir);
-    const dxcDir = try getDXCDir(b.host.result, b.allocator);
-    defer b.allocator.free(dxcDir);
+    var fxcDir = try getFXCDir(b.host.result, b.allocator);
+    defer fxcDir.close();
+    var dxcDir = try getDXCDir(b.host.result, b.allocator);
+    defer dxcDir.close();
+	var python_exe = try getPythonExecutableFile(b.allocator);
+    defer python_exe.close();
+	var fsl_py_file = try getFSLPyFile(b.allocator);
+	defer fsl_py_file.close();
 
-    std.log.info("fxcDir: {s}", .{fxcDir});
-    std.log.info("dxcDir: {s}", .{dxcDir});
+    std.log.info("fxcDir: {s}", .{fxcDir.str});
+    std.log.info("dxcDir: {s}", .{dxcDir.str});
+	std.log.info("python_exe: {s}", .{python_exe.str});
+    std.log.info("fsl_py_file: {s}", .{fsl_py_file.str});
 }

@@ -4,7 +4,8 @@
     .minimum_zig_version = "0.11.0",
     .dependencies =
     .{
-        .alias_build_util = .{ .path ="../../../../toolchain/common/alias_build_util", },
+        .alias_build_util = .{ .path ="../../../../toolchain/common/module/alias_build_util", },
+		.code_reminder = .{ .path ="../../../../toolchain/dep/module/code_reminder", },
     },
     .paths = .{""},
 }
