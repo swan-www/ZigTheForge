@@ -181,3 +181,6 @@ toolchain/common/zls/*
 #vscode task jsons
 !**/.vscode/launch.json
 !**/.vscode/tasks.json
+
+#Alias
+/**/intermediate/
