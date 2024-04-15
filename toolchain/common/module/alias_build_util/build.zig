@@ -77,6 +77,17 @@ pub const File = struct
 
 	const OpenFlags = std.fs.File.OpenFlags;
 
+	pub fn open(allocator: std.mem.Allocator, path: []const u8, flags: File.OpenFlags) !File
+	{
+		const file_handle = try std.fs.openFileAbsolute(path, flags);
+		errdefer file_handle.close();
+
+		const duped_path_str = try std.mem.Allocator.dupe(allocator, u8, path);
+		errdefer allocator.free(duped_path_str);
+		
+		return File{.file_handle = file_handle, .str = duped_path_str, .str_alloc = allocator};
+	}
+
 	pub fn close(self: File) void
 	{
 		self.file_handle.close();
@@ -89,7 +100,8 @@ pub const File = struct
 
 pub fn buildAbsolutePathAndGetDirectory(
 	allocator : std.mem.Allocator,
-	path_segments: []const []const u8
+	path_segments: []const []const u8,
+	dir_options: ?std.fs.Dir.OpenDirOptions,
 ) !Dir
 {
 	const joined_path = try std.fs.path.join(
@@ -98,7 +110,7 @@ pub fn buildAbsolutePathAndGetDirectory(
     );
 	errdefer allocator.free(joined_path);
 
-	const dir = try std.fs.openDirAbsolute(joined_path, .{.access_sub_paths = true});
+	const dir = try std.fs.openDirAbsolute(joined_path, dir_options orelse .{.access_sub_paths = true});
 	errdefer dir.close;
 
 	return Dir{.dir_handle = dir, .str = joined_path, .str_alloc = allocator};
@@ -107,13 +119,14 @@ pub fn buildAbsolutePathAndGetDirectory(
 pub fn getDirAsSubpathFromDir(
 	dir : Dir,
 	allocator : std.mem.Allocator,
-	sub_path: []const u8
+	sub_path: []const u8,
+	dir_options: ?std.fs.Dir.OpenDirOptions,
 ) !Dir
 {
 	const joined_path = try dir.dir_handle.realpathAlloc(allocator, sub_path);
 	errdefer allocator.free(joined_path);
 
-	const subdir = try std.fs.openDirAbsolute(joined_path, .{.access_sub_paths = true});
+	const subdir = try std.fs.openDirAbsolute(joined_path, dir_options orelse .{.access_sub_paths = true});
 	return Dir{.dir_handle = subdir, .str = joined_path, .str_alloc = allocator};
 }
 
@@ -134,7 +147,7 @@ pub fn getAliasRootDirectory(allocator : std.mem.Allocator) !Dir
     );
 	defer allocator.free(resolvedPath);
 
-	return buildAbsolutePathAndGetDirectory(allocator, &.{resolvedPath});
+	return buildAbsolutePathAndGetDirectory(allocator, &.{resolvedPath}, null);
 }
 
 //Caller owns the allocation
@@ -142,7 +155,7 @@ pub fn getAliasSrcDirectory(allocator : std.mem.Allocator) !Dir
 {
     var root_dir = try getAliasRootDirectory(allocator);
 	defer root_dir.close();
-	return getDirAsSubpathFromDir(root_dir, allocator, "src");	
+	return getDirAsSubpathFromDir(root_dir, allocator, "src", null);	
 }
 
 //Caller owns the allocation
@@ -150,7 +163,15 @@ pub fn getAliasProjDirectory(allocator : std.mem.Allocator) !Dir
 {
 	var root_dir = try getAliasRootDirectory(allocator);
 	defer root_dir.close();
-	return getDirAsSubpathFromDir(root_dir, allocator, "proj");	
+	return getDirAsSubpathFromDir(root_dir, allocator, "proj", null);	
+}
+
+//Caller owns the allocation
+pub fn getAliasLibDirectory(allocator : std.mem.Allocator) !Dir
+{
+	var root_dir = try getAliasRootDirectory(allocator);
+	defer root_dir.close();
+	return getDirAsSubpathFromDir(root_dir, allocator, "lib", null);	
 }
 
 //Caller owns the allocation
@@ -158,7 +179,7 @@ pub fn getTFAliasDirectory(allocator : std.mem.Allocator) !Dir
 {
     var src_dir = try getAliasSrcDirectory(allocator);
 	defer src_dir.close();
-	return getDirAsSubpathFromDir(src_dir, allocator, "dep/common/tfalias");
+	return getDirAsSubpathFromDir(src_dir, allocator, "dep/common/tfalias", null);
 }
 
 test "alias_root_dir" {
