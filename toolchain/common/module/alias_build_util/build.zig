@@ -175,11 +175,66 @@ pub fn getAliasLibDirectory(allocator : std.mem.Allocator) !Dir
 }
 
 //Caller owns the allocation
+pub fn getAliasTFLibDirectory(
+	b: *std.Build,
+	target: *const std.Build.ResolvedTarget,
+	optimization: std.builtin.OptimizeMode
+) !Dir
+{
+	const optimization_substring = switch(optimization)
+    {
+        std.builtin.OptimizeMode.Debug => "Debug",
+        else => "Release"
+    };
+
+ 	const cpu_arch = target.result.cpu.arch;
+    const os_name = target.result.os.tag;
+    const abi = target.result.abi;
+
+	var alias_lib_directory = try getAliasLibDirectory(b.allocator);
+	defer alias_lib_directory.close();
+    const target_substring = try std.fmt.allocPrint(b.allocator, "{s}-{s}-{s}", .{@tagName(cpu_arch), @tagName(os_name), @tagName(abi)});
+	defer b.allocator.free(target_substring);
+	const alias_tflib_directory = try std.fs.path.join(b.allocator, &.{alias_lib_directory.str, optimization_substring, target_substring, "tfalias"});
+	defer b.allocator.free(alias_tflib_directory);
+
+	return buildAbsolutePathAndGetDirectory(b.allocator, &.{alias_tflib_directory}, null);
+}
+
+//Caller owns the allocation
 pub fn getTFAliasDirectory(allocator : std.mem.Allocator) !Dir
 {
     var src_dir = try getAliasSrcDirectory(allocator);
 	defer src_dir.close();
 	return getDirAsSubpathFromDir(src_dir, allocator, "dep/common/tfalias", null);
+}
+
+pub fn addCSourceFiles(
+	b: *std.Build,
+	add_to: *std.Build.Step.Compile,
+	file_sub_paths: []const []const u8,
+	file_base_path: []const u8,
+	build_dir_path: []const u8,
+	flags: []const []const u8,
+) !void
+{
+	var relative_src_paths = std.ArrayList([]const u8).init(b.allocator);
+	defer {
+		for(relative_src_paths.items) |ele|
+		{
+			b.allocator.free(ele);
+		}
+		relative_src_paths.deinit();
+	}
+	for (file_sub_paths) |pt| {
+		const abs_path = try std.fs.path.join(b.allocator, &.{file_base_path, pt});
+		try relative_src_paths.append(try std.fs.path.relative(b.allocator, build_dir_path, abs_path));
+	}
+
+	add_to.addCSourceFiles(.{
+        .files = relative_src_paths.items,
+        .flags = flags,
+    });
 }
 
 test "alias_root_dir" {

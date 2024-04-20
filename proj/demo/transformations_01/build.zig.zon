@@ -5,7 +5,7 @@
     .dependencies =
     .{
         .alias_build_util = .{ .path = "../../../toolchain/common/module/alias_build_util", },
-		.tfalias_build_util = .{ .path = "../../../proj/dep/common/tfalias"},
+		.tfalias = .{ .path = "../../../proj/dep/common/tfalias"},
 		.code_reminder = .{ .path = "../../../toolchain/dep/module/code_reminder", },
     },
     .paths = .{""},

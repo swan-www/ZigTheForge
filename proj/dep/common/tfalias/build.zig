@@ -300,7 +300,8 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 pub const CopyResourceTarget = struct
 {
 	kind: std.fs.File.Kind,
-	source_path: []const u8,
+	source_path_base: []const u8,
+	source_path_relative: []const u8,
 	output_subpath: []const u8,
 	exclude_extensions: []const []const u8 = &.{},
 	include_extensions: ?[]const []const u8 = null,
@@ -310,40 +311,44 @@ pub const CopyResourcesOptions = struct
 {
     b: *std.Build,
 	step: *std.Build.Step,
-    resource_target: CopyResourceTarget
+    resource_targets: []const CopyResourceTarget
 };
 
 pub const CopyResourcesError = error{IncorrectKind, UnsupportedKind};
 
-pub fn copyResources(options: CopyResourcesOptions) CopyResourcesError!void
+pub fn copyResources(options: CopyResourcesOptions) !void
 {
 	const Implementation = struct {
-		pub fn copyFile(in_options: CopyResourcesOptions) CopyResourcesError!*std.Build.Step
+		pub fn copyFile(b: *std.Build, in_resource_target: CopyResourceTarget) !*std.Build.Step
 		{
-			if(in_options.resource_target.kind != std.fs.File.Kind.file)
+			const abs_source_path = try std.fs.path.join(b.allocator, &.{in_resource_target.source_path_base, in_resource_target.source_path_relative});	
+
+			if(in_resource_target.kind != std.fs.File.Kind.file)
 			{
 				return CopyResourcesError.IncorrectKind;
 			}
 
-			return &in_options.b.addInstallFileWithDir(
-				std.Build.LazyPath{ .path = in_options.resource_target.source_path },
+			return &b.addInstallFileWithDir(
+				std.Build.LazyPath{ .path = abs_source_path },
 				std.Build.InstallDir{ .bin = void{}, },
-				in_options.resource_target.output_subpath,
+				in_resource_target.output_subpath,
 			).step;
 		}
 
-		pub fn copyDir(in_options: CopyResourcesOptions) CopyResourcesError!*std.Build.Step
+		pub fn copyDir(b: *std.Build, in_resource_target: CopyResourceTarget) !*std.Build.Step
 		{
-			if(in_options.resource_target.kind != std.fs.File.Kind.directory)
+			const abs_source_path = try std.fs.path.join(b.allocator, &.{in_resource_target.source_path_base, in_resource_target.source_path_relative});	
+
+			if(in_resource_target.kind != std.fs.File.Kind.directory)
 			{
 				return CopyResourcesError.IncorrectKind;
 			}
 
-			return &in_options.b.addInstallDirectory(.{
-				.source_dir = .{ .path = in_options.resource_target.source_path },
-				.install_subdir = in_options.resource_target.output_subpath,				
-				.include_extensions = in_options.resource_target.include_extensions,
-				.exclude_extensions = in_options.resource_target.exclude_extensions,
+			return &b.addInstallDirectory(.{
+				.source_dir = .{ .path = abs_source_path },
+				.install_subdir = in_resource_target.output_subpath,				
+				.include_extensions = in_resource_target.include_extensions,
+				.exclude_extensions = in_resource_target.exclude_extensions,
 				.install_dir = .{
 					.bin = void{},
 				},
@@ -351,32 +356,166 @@ pub fn copyResources(options: CopyResourcesOptions) CopyResourcesError!void
 		}
 	};
 
-	const copy_step = try switch(options.resource_target.kind)
+	for (options.resource_targets) |ele|
 	{
-		std.fs.File.Kind.file => Implementation.copyFile(options),
-		std.fs.File.Kind.directory => Implementation.copyDir(options),
-		else => CopyResourcesError.UnsupportedKind,
+		const copy_step = try switch(ele.kind)
+		{
+			std.fs.File.Kind.file => Implementation.copyFile(options.b, ele),
+			std.fs.File.Kind.directory => Implementation.copyDir(options.b, ele),
+			else => CopyResourcesError.UnsupportedKind,
+		};
+
+		options.step.dependOn(copy_step);
+	}
+}
+
+const LinkError = error{UnsupportedTargetPlatform};
+
+pub fn linkRequiredLibs(
+	b: *std.Build,
+	target: *const std.Build.ResolvedTarget,
+	optimization: std.builtin.OptimizeMode,
+	link_to: *std.Build.Step.Compile,
+) !void
+{
+	const Implementation = struct{
+
+		pub fn linkWindows(
+			in_b: *std.Build,
+			in_target: *const std.Build.ResolvedTarget,
+			in_optimization: std.builtin.OptimizeMode,
+			in_link_to: *std.Build.Step.Compile,
+		) !void
+		{
+			const link_static_lib_options = std.Build.Module.LinkSystemLibraryOptions{.needed = true, .preferred_link_mode = .static};
+			var tfalias_lib_directory = try alias_build_util.getAliasTFLibDirectory(in_b, in_target, in_optimization);
+			defer tfalias_lib_directory.close();
+
+			in_link_to.linkSystemLibrary2("Xinput9_1_0", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("ws2_32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("gdi32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("kernel32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("winspool", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("comdlg32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("advapi32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("shell32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("ole32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("oleaut32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("uuid", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("odbc32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("odbccp32", link_static_lib_options);
+
+			{
+				const winpix_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"WinPixEventRuntime", in_target.result.dynamicLibSuffix()});
+				defer in_b.allocator.free(winpix_shared_lib_filename);
+				const winpix_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tfalias_lib_directory.str, winpix_shared_lib_filename});
+				defer in_b.allocator.free(winpix_shared_lib_path);
+				in_b.installBinFile(winpix_shared_lib_path, winpix_shared_lib_filename);
+			}
+
+			{
+				const ags_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"amd_ags_x64", in_target.result.dynamicLibSuffix()});
+				defer in_b.allocator.free(ags_shared_lib_filename);
+				const ags_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tfalias_lib_directory.str, ags_shared_lib_filename});
+				defer in_b.allocator.free(ags_shared_lib_path);
+				in_b.installBinFile(ags_shared_lib_path, ags_shared_lib_filename);
+			}
+
+			{
+				const dxil_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"dxil", in_target.result.dynamicLibSuffix()});
+				defer in_b.allocator.free(dxil_shared_lib_filename);
+				const dxil_shared_lib_path = try std.fs.path.join(in_b.allocator,&[_][]const u8{tfalias_lib_directory.str, dxil_shared_lib_filename});
+				defer in_b.allocator.free(dxil_shared_lib_path);
+				in_b.installBinFile(dxil_shared_lib_path, dxil_shared_lib_filename);
+			}
+
+			{
+				const dxcompiler_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"dxcompiler", in_target.result.dynamicLibSuffix()});
+				defer in_b.allocator.free(dxcompiler_shared_lib_filename);
+				const dxcompiler_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tfalias_lib_directory.str, dxcompiler_shared_lib_filename});
+				defer in_b.allocator.free(dxcompiler_shared_lib_path);
+				in_b.installBinFile(dxcompiler_shared_lib_path, dxcompiler_shared_lib_filename);
+			}
+		}
 	};
 
-	options.step.dependOn(copy_step);
+	return switch(target.result.os.tag)
+	{
+		.windows => Implementation.linkWindows(b, target, optimization, link_to),
+		else => LinkError.UnsupportedTargetPlatform,
+	};
+}
+
+pub fn linkEngineLibs(
+	b: *std.Build,
+	target: *const std.Build.ResolvedTarget,
+	optimize: std.builtin.OptimizeMode,
+	link_to: *std.Build.Step.Compile,
+) !void
+{
+	_ = &optimize;
+	var tf_alias_dir = try alias_build_util.getTFAliasDirectory(b.allocator);
+	defer tf_alias_dir.close();
+
+	{
+		const ags_archive_filename = try std.mem.join(b.allocator, "", &.{"amd_ags_x64", target.result.staticLibSuffix()});
+		defer b.allocator.free(ags_archive_filename);
+		const ags_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/ags/ags_lib/lib", ags_archive_filename});
+		defer b.allocator.free(ags_archive_path);
+		link_to.addObjectFile(std.Build.LazyPath{.path = ags_archive_path});
+	}
+
+	{
+		const nvapi_archive_filename = try std.mem.join(b.allocator, "", &.{"nvapi64", target.result.staticLibSuffix()});
+		defer b.allocator.free(nvapi_archive_filename);
+		const nvapi_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/nvapi/amd64", nvapi_archive_filename});
+		defer b.allocator.free(nvapi_archive_path);
+		link_to.addObjectFile(std.Build.LazyPath{.path = nvapi_archive_path});
+	}
+
+	{
+		const dxcompiler_archive_filename = try std.mem.join(b.allocator, "", &.{"dxcompiler", target.result.staticLibSuffix()});
+		defer b.allocator.free(dxcompiler_archive_filename);
+		const dxcompiler_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/lib/x64", dxcompiler_archive_filename});
+		defer b.allocator.free(dxcompiler_archive_path);
+		link_to.addObjectFile(std.Build.LazyPath{.path = dxcompiler_archive_path});
+	}
+
+	{
+		const winpixeventruntime_archive_filename = try std.mem.join(b.allocator, "", &.{"WinPixEventRuntime", target.result.staticLibSuffix()});
+		defer b.allocator.free(winpixeventruntime_archive_filename);
+		const winpixeventruntime_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/OS/ThirdParty/OpenSource/winpixeventruntime/bin", winpixeventruntime_archive_filename});
+		defer b.allocator.free(winpixeventruntime_archive_path);
+		link_to.addObjectFile(std.Build.LazyPath{.path = winpixeventruntime_archive_path});
+	}
 }
 
 pub fn build(b: *std.Build) !void
 {
-    _ = b.standardTargetOptions(.{});
-    _ = b.standardOptimizeOption(.{});
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
-    var fxcDir = try getFXCDir(b.host.result, b.allocator);
-    defer fxcDir.close();
-    var dxcDir = try getDXCDir(b.host.result, b.allocator);
-    defer dxcDir.close();
-	var python_exe = try getPythonExecutableFile(b.allocator);
-    defer python_exe.close();
-	var fsl_py_file = try getFSLPyFile(b.allocator);
-	defer fsl_py_file.close();
+    const tfalias_os = b.dependency("tfalias_os", .{
+        .target = target,
+        .optimize = optimize,
+    });
+	b.installArtifact(tfalias_os.artifact("tfalias_os"));
 
-    std.log.info("fxcDir: {s}", .{fxcDir.str});
-    std.log.info("dxcDir: {s}", .{dxcDir.str});
-	std.log.info("python_exe: {s}", .{python_exe.str});
-    std.log.info("fsl_py_file: {s}", .{fsl_py_file.str});
+	const tfalias_renderer = b.dependency("tfalias_renderer", .{
+        .target = target,
+        .optimize = optimize,
+    });
+	b.installArtifact(tfalias_renderer.artifact("tfalias_renderer"));
+
+	const tfalias_gainput = b.dependency("tfalias_gainput", .{
+        .target = target,
+        .optimize = optimize,
+    });
+	b.installArtifact(tfalias_gainput.artifact("tfalias_gainput"));
+
+	const tfalias_spirvtools = b.dependency("tfalias_spirvtools", .{
+        .target = target,
+        .optimize = optimize,
+    });
+	b.installArtifact(tfalias_spirvtools.artifact("tfalias_spirvtools"));
 }

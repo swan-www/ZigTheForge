@@ -1,115 +1,156 @@
 const std = @import("std");
+const alias_build_util = @import("alias_build_util");
 
-const alias_root_directory = "../../../..";
-const alias_src_directory = alias_root_directory ++ "/src";
-const tfalias_directory = alias_src_directory ++ "/dep/common/tfalias";
+const BuildError = error{CouldNotResolveBuildDir};
 
-pub fn build_as_lib(b: *std.Build, target: *const std.Build.ResolvedTarget, optimization: *const std.builtin.OptimizeMode) *std.Build.Step.Compile {
-    b.verbose_cc = true;
+pub fn build_as_lib(
+	b: *std.Build,
+	target: std.Build.ResolvedTarget,
+	optimize: std.builtin.OptimizeMode,
+) !*std.Build.Step.Compile 
+{
+	var tf_alias_dir = try alias_build_util.getTFAliasDirectory(b.allocator);
+	defer tf_alias_dir.close();
+
     const statlib = b.addStaticLibrary
     (.{
         .name = "tfalias_os",
-        .target = target.*,
-        .optimize = optimization.*
+        .target = target,
+        .optimize = optimize
     });
     statlib.linkLibC();
-    statlib.addCSourceFiles(.{
-        .files = &.{
-            tfalias_directory ++ "/Common_3/Application/CameraController.cpp",
-            tfalias_directory ++ "/Common_3/Application/InputSystem.cpp",
-            tfalias_directory ++ "/Common_3/Application/Profiler/GpuProfiler.cpp",
-            tfalias_directory ++ "/Common_3/Application/Profiler/ProfilerBase.cpp",
-            tfalias_directory ++ "/Common_3/Application/RemoteControl.cpp",
-            tfalias_directory ++ "/Common_3/Application/Screenshot.cpp",
-            tfalias_directory ++ "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui.cpp",
-            tfalias_directory ++ "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_demo.cpp",
-            tfalias_directory ++ "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_draw.cpp",
-            tfalias_directory ++ "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_widgets.cpp",
-            tfalias_directory ++ "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_tables.cpp",
-            tfalias_directory ++ "/Common_3/Application/UI/UI.cpp",
-            tfalias_directory ++ "/Common_3/Game/Scripting/LuaManager.cpp",
-            tfalias_directory ++ "/Common_3/Game/Scripting/LuaManagerImpl.cpp",
-            tfalias_directory ++ "/Common_3/Game/Scripting/LuaSystem.cpp",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lapi.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lauxlib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lbaselib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lbitlib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lcode.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lcorolib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lctype.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldblib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldebug.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldo.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldump.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lfunc.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lgc.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/linit.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/liolib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/llex.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lmathlib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lmem.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/loadlib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lobject.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lopcodes.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/loslib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lparser.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lstate.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lstring.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lstrlib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ltable.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ltablib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ltm.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lundump.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lutf8lib.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lvm.c",
-            tfalias_directory ++ "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lzio.c",
-            tfalias_directory ++ "/Common_3/Application/Fonts/FontSystem.cpp",
-            tfalias_directory ++ "/Common_3/Application/Fonts/stbtt.cpp",
-            tfalias_directory ++ "/Common_3/OS/CPUConfig.cpp",
-            tfalias_directory ++ "/Common_3/OS/ThirdParty/OpenSource/cpu_features/src/impl_x86_windows.c",
-            tfalias_directory ++ "/Common_3/OS/WindowSystem/WindowSystem.cpp",
-            tfalias_directory ++ "/Common_3/Utilities/FileSystem/FileSystem.c",
-            tfalias_directory ++ "/Common_3/Utilities/FileSystem/SystemRun.c",
-            tfalias_directory ++ "/Common_3/Utilities/Log/Log.c",
-            tfalias_directory ++ "/Common_3/Utilities/Math/Algorithms.c",
-            tfalias_directory ++ "/Common_3/Utilities/Math/StbDs.c",
-            tfalias_directory ++ "/Common_3/Utilities/MemoryTracking/MemoryTracking.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/bstrlib/bstrlib.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/lz4/lz4.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/rmem/src/rmem_get_module_info.cpp",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/rmem/src/rmem_hook.cpp",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/rmem/src/rmem_lib.cpp",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/debug.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/entropy_common.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/error_private.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/fse_decompress.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/pool.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/threading.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/xxhash.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/zstd_common.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/huf_decompress.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/zstd_ddict.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/zstd_decompress.c",
-            tfalias_directory ++ "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/zstd_decompress_block.c",
-            tfalias_directory ++ "/Common_3/Utilities/Threading/ThreadSystem.c",
-            tfalias_directory ++ "/Common_3/Utilities/Timer.c",
-            tfalias_directory ++ "/Common_3/OS/Windows/WindowsBase.cpp",
-            tfalias_directory ++ "/Common_3/OS/Windows/WindowsFileSystem.cpp",
-            tfalias_directory ++ "/Common_3/OS/Windows/WindowsLog.c",
-            tfalias_directory ++ "/Common_3/OS/Windows/WindowsStackTraceDump.cpp",
-            tfalias_directory ++ "/Common_3/OS/Windows/WindowsThread.c",
-            tfalias_directory ++ "/Common_3/OS/Windows/WindowsTime.c",
-            tfalias_directory ++ "/Common_3/OS/Windows/WindowsWindow.cpp",
-            tfalias_directory ++ "/Common_3/Resources/AnimationSystem/Animation/AnimatedObject.cpp",
-            tfalias_directory ++ "/Common_3/Resources/AnimationSystem/Animation/Animation.cpp",
-            tfalias_directory ++ "/Common_3/Resources/AnimationSystem/Animation/Clip.cpp",
-            tfalias_directory ++ "/Common_3/Resources/AnimationSystem/Animation/ClipController.cpp",
-            tfalias_directory ++ "/Common_3/Resources/AnimationSystem/Animation/ClipMask.cpp",
-            tfalias_directory ++ "/Common_3/Resources/AnimationSystem/Animation/Rig.cpp",
-            tfalias_directory ++ "/Common_3/Resources/AnimationSystem/Animation/SkeletonBatcher.cpp",
-        },
-        //.flags = &.{"-Wno-error=unused-command-line-argument"},
-    });
+
+	const build_file = @src().file;
+	const build_dir = std.fs.path.dirname(build_file) orelse return BuildError.CouldNotResolveBuildDir;
+
+	const file_sub_paths_cpp : []const []const u8 = &.{
+		"/Common_3/Application/CameraController.cpp",
+        "/Common_3/Application/InputSystem.cpp",
+        "/Common_3/Application/Profiler/GpuProfiler.cpp",
+        "/Common_3/Application/Profiler/ProfilerBase.cpp",
+        "/Common_3/Application/RemoteControl.cpp",
+        "/Common_3/Application/Screenshot.cpp",
+        "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui.cpp",
+        "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_demo.cpp",
+        "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_draw.cpp",
+        "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_widgets.cpp",
+        "/Common_3/Application/ThirdParty/OpenSource/imgui/imgui_tables.cpp",
+        "/Common_3/Application/UI/UI.cpp",
+        "/Common_3/Game/Scripting/LuaManager.cpp",
+        "/Common_3/Game/Scripting/LuaManagerImpl.cpp",
+        "/Common_3/Game/Scripting/LuaSystem.cpp",
+        "/Common_3/Application/Fonts/FontSystem.cpp",
+        "/Common_3/Application/Fonts/stbtt.cpp",
+        "/Common_3/OS/CPUConfig.cpp",
+        "/Common_3/OS/WindowSystem/WindowSystem.cpp",
+        "/Common_3/Utilities/ThirdParty/OpenSource/rmem/src/rmem_get_module_info.cpp",
+        "/Common_3/Utilities/ThirdParty/OpenSource/rmem/src/rmem_hook.cpp",
+        "/Common_3/Utilities/ThirdParty/OpenSource/rmem/src/rmem_lib.cpp",
+        "/Common_3/OS/Windows/WindowsBase.cpp",
+        "/Common_3/OS/Windows/WindowsFileSystem.cpp",
+        "/Common_3/OS/Windows/WindowsStackTraceDump.cpp",
+        "/Common_3/OS/Windows/WindowsWindow.cpp",
+        "/Common_3/Resources/AnimationSystem/Animation/AnimatedObject.cpp",
+        "/Common_3/Resources/AnimationSystem/Animation/Animation.cpp",
+        "/Common_3/Resources/AnimationSystem/Animation/Clip.cpp",
+        "/Common_3/Resources/AnimationSystem/Animation/ClipController.cpp",
+        "/Common_3/Resources/AnimationSystem/Animation/ClipMask.cpp",
+        "/Common_3/Resources/AnimationSystem/Animation/Rig.cpp",
+        "/Common_3/Resources/AnimationSystem/Animation/SkeletonBatcher.cpp",
+	};
+
+	try alias_build_util.addCSourceFiles(
+		b,
+		statlib,
+		file_sub_paths_cpp,
+		tf_alias_dir.str,
+		build_dir, 
+		&.{
+			"-Wno-unused-command-line-argument",
+		}
+	);
+
+	const file_sub_paths_c : []const []const u8 = &.{
+		"/Common_3/OS/Windows/WindowsThread.c",
+        "/Common_3/OS/Windows/WindowsTime.c",
+        "/Common_3/OS/Windows/WindowsLog.c",
+		"/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/debug.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/entropy_common.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/error_private.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/fse_decompress.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/pool.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/threading.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/xxhash.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/common/zstd_common.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/huf_decompress.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/zstd_ddict.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/zstd_decompress.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/zstd/decompress/zstd_decompress_block.c",
+        "/Common_3/Utilities/Threading/ThreadSystem.c",
+        "/Common_3/Utilities/Timer.c",
+		"/Common_3/Utilities/FileSystem/FileSystem.c",
+        "/Common_3/Utilities/FileSystem/SystemRun.c",
+        "/Common_3/Utilities/Log/Log.c",
+        "/Common_3/Utilities/Math/Algorithms.c",
+        "/Common_3/Utilities/Math/StbDs.c",
+        "/Common_3/Utilities/MemoryTracking/MemoryTracking.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/bstrlib/bstrlib.c",
+        "/Common_3/Utilities/ThirdParty/OpenSource/lz4/lz4.c",
+		"/Common_3/OS/ThirdParty/OpenSource/cpu_features/src/impl_x86_windows.c",
+		"/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lapi.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lauxlib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lbaselib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lbitlib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lcode.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lcorolib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lctype.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldblib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldebug.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldo.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ldump.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lfunc.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lgc.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/linit.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/liolib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/llex.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lmathlib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lmem.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/loadlib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lobject.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lopcodes.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/loslib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lparser.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lstate.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lstring.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lstrlib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ltable.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ltablib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/ltm.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lundump.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lutf8lib.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lvm.c",
+        "/Common_3/Game/ThirdParty/OpenSource/lua-5.3.5/src/lzio.c",
+	};
+
+	try alias_build_util.addCSourceFiles(
+		b,
+		statlib,
+		file_sub_paths_c,
+		tf_alias_dir.str,
+		build_dir, 
+		&.{
+			"-Wno-unused-command-line-argument"
+		}
+	);
 
     return statlib;
+}
+
+pub fn build(b: *std.Build) !void
+{
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const tfalias_os_statlib = try build_as_lib(b, target, optimize);
+	b.installArtifact(tfalias_os_statlib);
 }
