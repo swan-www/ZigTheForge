@@ -67,6 +67,7 @@ pub fn build_as_lib(
 		build_dir, 
 		&.{
 			"-Wno-unused-command-line-argument",
+            "-fno-sanitize=undefined"
 		}
 	);
 
@@ -139,7 +140,8 @@ pub fn build_as_lib(
 		tf_alias_dir.str,
 		build_dir, 
 		&.{
-			"-Wno-unused-command-line-argument"
+			"-Wno-unused-command-line-argument",
+            "-fno-sanitize=undefined"
 		}
 	);
 

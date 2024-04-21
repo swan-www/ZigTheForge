@@ -387,9 +387,10 @@ pub fn linkRequiredLibs(
 			in_link_to: *std.Build.Step.Compile,
 		) !void
 		{
+			_ = &in_optimization;
 			const link_static_lib_options = std.Build.Module.LinkSystemLibraryOptions{.needed = true, .preferred_link_mode = .static};
-			var tfalias_lib_directory = try alias_build_util.getAliasTFLibDirectory(in_b, in_target, in_optimization);
-			defer tfalias_lib_directory.close();
+			var tf_alias_dir = try alias_build_util.getTFAliasDirectory(in_b.allocator);
+			defer tf_alias_dir.close();
 
 			in_link_to.linkSystemLibrary2("Xinput9_1_0", link_static_lib_options);
 			in_link_to.linkSystemLibrary2("ws2_32", link_static_lib_options);
@@ -406,35 +407,96 @@ pub fn linkRequiredLibs(
 			in_link_to.linkSystemLibrary2("odbccp32", link_static_lib_options);
 
 			{
+				const ags_archive_filename = try std.mem.join(in_b.allocator, "", &.{"amd_ags_x64", in_target.result.staticLibSuffix()});
+				defer in_b.allocator.free(ags_archive_filename);
+				const ags_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/ags/ags_lib/lib", ags_archive_filename});
+				defer in_b.allocator.free(ags_archive_path);
+				in_link_to.addObjectFile(std.Build.LazyPath{.path = ags_archive_path});
+			}
+
+			{
+				const nvapi_archive_filename = try std.mem.join(in_b.allocator, "", &.{"nvapi64", in_target.result.staticLibSuffix()});
+				defer in_b.allocator.free(nvapi_archive_filename);
+				const nvapi_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/nvapi/amd64", nvapi_archive_filename});
+				defer in_b.allocator.free(nvapi_archive_path);
+				in_link_to.addObjectFile(std.Build.LazyPath{.path = nvapi_archive_path});
+			}
+
+			{
+				const dxcompiler_archive_filename = try std.mem.join(in_b.allocator, "", &.{"dxcompiler", in_target.result.staticLibSuffix()});
+				defer in_b.allocator.free(dxcompiler_archive_filename);
+				const dxcompiler_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/lib/x64", dxcompiler_archive_filename});
+				defer in_b.allocator.free(dxcompiler_archive_path);
+				in_link_to.addObjectFile(std.Build.LazyPath{.path = dxcompiler_archive_path});
+			}
+
+			{
+				const winpixeventruntime_archive_filename = try std.mem.join(in_b.allocator, "", &.{"WinPixEventRuntime", in_target.result.staticLibSuffix()});
+				defer in_b.allocator.free(winpixeventruntime_archive_filename);
+				const winpixeventruntime_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/OS/ThirdParty/OpenSource/winpixeventruntime/bin", winpixeventruntime_archive_filename});
+				defer in_b.allocator.free(winpixeventruntime_archive_path);
+				in_link_to.addObjectFile(std.Build.LazyPath{.path = winpixeventruntime_archive_path});
+			}
+
+			{
 				const winpix_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"WinPixEventRuntime", in_target.result.dynamicLibSuffix()});
 				defer in_b.allocator.free(winpix_shared_lib_filename);
-				const winpix_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tfalias_lib_directory.str, winpix_shared_lib_filename});
+				const winpix_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{
+					tf_alias_dir.str,
+					"Common_3/OS/ThirdParty/OpenSource/winpixeventruntime/bin",
+					winpix_shared_lib_filename
+				});
 				defer in_b.allocator.free(winpix_shared_lib_path);
-				in_b.installBinFile(winpix_shared_lib_path, winpix_shared_lib_filename);
+
+				const winpix_shared_lib_path_relative = try std.fs.path.relative(in_b.allocator, in_b.build_root.path.?, winpix_shared_lib_path);
+				defer in_b.allocator.free(winpix_shared_lib_path_relative);
+
+				in_b.installBinFile(winpix_shared_lib_path_relative, winpix_shared_lib_filename);
 			}
 
 			{
 				const ags_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"amd_ags_x64", in_target.result.dynamicLibSuffix()});
 				defer in_b.allocator.free(ags_shared_lib_filename);
-				const ags_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tfalias_lib_directory.str, ags_shared_lib_filename});
+				const ags_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{
+					tf_alias_dir.str,
+					"Common_3/Graphics/ThirdParty/OpenSource/ags/ags_lib/lib",
+					ags_shared_lib_filename
+				});
 				defer in_b.allocator.free(ags_shared_lib_path);
-				in_b.installBinFile(ags_shared_lib_path, ags_shared_lib_filename);
+				const ags_shared_lib_path_relative = try std.fs.path.relative(in_b.allocator, in_b.build_root.path.?, ags_shared_lib_path);
+				defer in_b.allocator.free(ags_shared_lib_path_relative);
+
+				in_b.installBinFile(ags_shared_lib_path_relative, ags_shared_lib_filename);
 			}
 
 			{
 				const dxil_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"dxil", in_target.result.dynamicLibSuffix()});
 				defer in_b.allocator.free(dxil_shared_lib_filename);
-				const dxil_shared_lib_path = try std.fs.path.join(in_b.allocator,&[_][]const u8{tfalias_lib_directory.str, dxil_shared_lib_filename});
+				const dxil_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{
+					tf_alias_dir.str,
+					"Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/bin/x64",
+					dxil_shared_lib_filename
+				});
 				defer in_b.allocator.free(dxil_shared_lib_path);
-				in_b.installBinFile(dxil_shared_lib_path, dxil_shared_lib_filename);
+				const dxil_shared_lib_path_relative = try std.fs.path.relative(in_b.allocator, in_b.build_root.path.?, dxil_shared_lib_path);
+				defer in_b.allocator.free(dxil_shared_lib_path_relative);
+
+				in_b.installBinFile(dxil_shared_lib_path_relative, dxil_shared_lib_filename);
 			}
 
 			{
 				const dxcompiler_shared_lib_filename = try std.mem.join(in_b.allocator, "", &.{"dxcompiler", in_target.result.dynamicLibSuffix()});
 				defer in_b.allocator.free(dxcompiler_shared_lib_filename);
-				const dxcompiler_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tfalias_lib_directory.str, dxcompiler_shared_lib_filename});
+				const dxcompiler_shared_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{
+					tf_alias_dir.str,
+					"Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/bin/x64",
+					dxcompiler_shared_lib_filename
+				});
 				defer in_b.allocator.free(dxcompiler_shared_lib_path);
-				in_b.installBinFile(dxcompiler_shared_lib_path, dxcompiler_shared_lib_filename);
+				const dxcompiler_shared_lib_path_relative = try std.fs.path.relative(in_b.allocator, in_b.build_root.path.?, dxcompiler_shared_lib_path);
+				defer in_b.allocator.free(dxcompiler_shared_lib_path_relative);
+
+				in_b.installBinFile(dxcompiler_shared_lib_path_relative, dxcompiler_shared_lib_filename);
 			}
 		}
 	};
@@ -444,50 +506,6 @@ pub fn linkRequiredLibs(
 		.windows => Implementation.linkWindows(b, target, optimization, link_to),
 		else => LinkError.UnsupportedTargetPlatform,
 	};
-}
-
-pub fn linkEngineLibs(
-	b: *std.Build,
-	target: *const std.Build.ResolvedTarget,
-	optimize: std.builtin.OptimizeMode,
-	link_to: *std.Build.Step.Compile,
-) !void
-{
-	_ = &optimize;
-	var tf_alias_dir = try alias_build_util.getTFAliasDirectory(b.allocator);
-	defer tf_alias_dir.close();
-
-	{
-		const ags_archive_filename = try std.mem.join(b.allocator, "", &.{"amd_ags_x64", target.result.staticLibSuffix()});
-		defer b.allocator.free(ags_archive_filename);
-		const ags_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/ags/ags_lib/lib", ags_archive_filename});
-		defer b.allocator.free(ags_archive_path);
-		link_to.addObjectFile(std.Build.LazyPath{.path = ags_archive_path});
-	}
-
-	{
-		const nvapi_archive_filename = try std.mem.join(b.allocator, "", &.{"nvapi64", target.result.staticLibSuffix()});
-		defer b.allocator.free(nvapi_archive_filename);
-		const nvapi_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/nvapi/amd64", nvapi_archive_filename});
-		defer b.allocator.free(nvapi_archive_path);
-		link_to.addObjectFile(std.Build.LazyPath{.path = nvapi_archive_path});
-	}
-
-	{
-		const dxcompiler_archive_filename = try std.mem.join(b.allocator, "", &.{"dxcompiler", target.result.staticLibSuffix()});
-		defer b.allocator.free(dxcompiler_archive_filename);
-		const dxcompiler_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/lib/x64", dxcompiler_archive_filename});
-		defer b.allocator.free(dxcompiler_archive_path);
-		link_to.addObjectFile(std.Build.LazyPath{.path = dxcompiler_archive_path});
-	}
-
-	{
-		const winpixeventruntime_archive_filename = try std.mem.join(b.allocator, "", &.{"WinPixEventRuntime", target.result.staticLibSuffix()});
-		defer b.allocator.free(winpixeventruntime_archive_filename);
-		const winpixeventruntime_archive_path = try std.fs.path.join(b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/OS/ThirdParty/OpenSource/winpixeventruntime/bin", winpixeventruntime_archive_filename});
-		defer b.allocator.free(winpixeventruntime_archive_path);
-		link_to.addObjectFile(std.Build.LazyPath{.path = winpixeventruntime_archive_path});
-	}
 }
 
 pub fn build(b: *std.Build) !void

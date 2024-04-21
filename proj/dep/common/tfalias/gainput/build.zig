@@ -70,7 +70,7 @@ pub fn build_as_lib(
 			"-Wno-unused-command-line-argument",
 			"-Wno-enum-compare",
 			"-Wno-unused-value",
-			//"-Dstrdup _strdup",
+            "-fno-sanitize=undefined"
 		}
 	);
 
@@ -86,6 +86,7 @@ pub fn build_as_lib(
 		build_dir, 
 		&.{
 			"-Wno-unused-command-line-argument",
+            "-fno-sanitize=undefined"
 		}
 	);
 

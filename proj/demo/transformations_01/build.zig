@@ -24,8 +24,6 @@ pub fn build(b: *std.Build) !void {
 
 	var tfalias_dir = try alias_build_util.getTFAliasDirectory(b.allocator);
 	defer tfalias_dir.close();
-	var tfalias_lib_directory = try alias_build_util.getAliasTFLibDirectory(b, &target, optimize);
-	defer tfalias_lib_directory.close();
 
 	const tfalias_example_directory = try std.fs.path.join(b.allocator, &.{tfalias_dir.str, "Examples_3/Unit_Tests/src/01_Transformations"});
 	defer b.allocator.free(tfalias_example_directory);
@@ -39,7 +37,6 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibrary(tfalias_lib.artifact("tfalias_renderer"));
 	exe.linkLibrary(tfalias_lib.artifact("tfalias_spirvtools"));
 	try tfalias.linkRequiredLibs(b, &target, optimize, exe);
-	try tfalias.linkEngineLibs(b, &target, optimize, exe);
 
 	var alias_src_directory = try alias_build_util.getAliasSrcDirectory(b.allocator);
 	defer alias_src_directory.close();
@@ -52,7 +49,12 @@ pub fn build(b: *std.Build) !void {
 	const file_sub_paths : []const []const u8 = &.{
 		"main.cpp"
 	};
-	try alias_build_util.addCSourceFiles(b, exe, file_sub_paths, transformations_src_dir, build_dir, &.{"-Wno-unused-command-line-argument"});
+	try alias_build_util.addCSourceFiles(b, exe, file_sub_paths, transformations_src_dir, build_dir,
+		&.{
+			"-Wno-unused-command-line-argument",
+			"-fno-sanitize=undefined"
+		}
+	);
 
 	const compile_shaders_step = b.step("compile-shaders", "Compiles the shaders associated with this application");
 	b.getInstallStep().dependOn(compile_shaders_step);
