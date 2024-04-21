@@ -40,9 +40,9 @@ pub fn build(b: *std.Build) !void {
 	defer b.allocator.free(transformations_src_dir);
 
 	const file_sub_paths : []const []const u8 = &.{
-		"main.cpp"
+		"01_Transformations.cpp"
 	};
-	try alias_build_util.addCSourceFiles(b, exe, file_sub_paths, transformations_src_dir,
+	try alias_build_util.addCSourceFiles(b, exe, file_sub_paths, tfalias_example_directory,
 		&.{
 			"-Wno-unused-command-line-argument",
 			"-fno-sanitize=undefined"

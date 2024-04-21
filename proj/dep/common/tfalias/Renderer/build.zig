@@ -28,7 +28,7 @@ pub fn build_as_lib(
 		"/Common_3/Graphics/Direct3D12/Direct3D12Hooks.cpp" ,
 		"/Common_3/Graphics/Direct3D12/Direct3D12Raytracing.cpp" ,
 		"/Common_3/Graphics/Direct3D12/Direct3D12ShaderReflection.cpp" ,
-		"/Common_3/Graphics/GPUConfig.cpp" ,
+		"/Common_3/Graphics/GraphicsConfig.cpp" ,
 		"/Common_3/Graphics/PickRenderingApi.cpp" ,
 		"/Common_3/Graphics/Vulkan/Vulkan.cpp" ,
 		"/Common_3/Graphics/Vulkan/VulkanRaytracing.cpp" ,
