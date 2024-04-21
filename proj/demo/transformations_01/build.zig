@@ -9,11 +9,6 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-	//Add MSBuild hook
-
-	const build_theforge_step = b.step("build-tf", "Compiles the TheForge through MSBuild");
-	b.getInstallStep().dependOn(build_theforge_step);
-
     const exe = b.addExecutable(.{
         .name = "main",
         .target = target,
@@ -36,6 +31,7 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibrary(tfalias_lib.artifact("tfalias_os"));
 	exe.linkLibrary(tfalias_lib.artifact("tfalias_renderer"));
 	exe.linkLibrary(tfalias_lib.artifact("tfalias_spirvtools"));
+	//Links required engine dependency libs, and installs required shared libraries.
 	try tfalias.linkRequiredLibs(b, &target, optimize, exe);
 
 	var alias_src_directory = try alias_build_util.getAliasSrcDirectory(b.allocator);
@@ -59,11 +55,6 @@ pub fn build(b: *std.Build) !void {
 	const compile_shaders_step = b.step("compile-shaders", "Compiles the shaders associated with this application");
 	b.getInstallStep().dependOn(compile_shaders_step);
 
-	const ShaderCompEntry = struct {
-		source_base_path: []const u8,
-		subpath: []const u8,
-	};
-
 	const tfalias_example_shader_directory = try std.fs.path.join(b.allocator, &.{tfalias_example_directory, "Shaders"});
 	defer b.allocator.free(tfalias_example_shader_directory);
 
@@ -79,26 +70,13 @@ pub fn build(b: *std.Build) !void {
 	const tfalias_os_panini_projection_shader_dir = try std.fs.path.join(b.allocator, &.{tfalias_dir.str, "Middleware_3/PaniniProjection/Shaders"});
 	defer b.allocator.free(tfalias_os_panini_projection_shader_dir);
 
-	const shader_sub_paths : []const ShaderCompEntry = &.{
+	const shader_comp_entry : []const tfalias.ShaderCompEntry = &.{
 		.{ .source_base_path = tfalias_example_shader_directory, .subpath = "FSL/ShaderList.fsl"},
 		.{ .source_base_path = tfalias_os_font_shader_dir, .subpath = "FSL/Fonts_ShaderList.fsl"},
 		.{ .source_base_path = tfalias_os_ui_shader_dir, .subpath = "FSL/UI_ShaderList.fsl"},
 		.{ .source_base_path = tfalias_os_animation_shader_dir, .subpath = "FSL/Animation_ShaderList.fsl"},
 		.{ .source_base_path = tfalias_os_panini_projection_shader_dir, .subpath = "FSL/Panini_ShaderList.fsl"},
 	};
-
-	var relative_shader_paths = std.ArrayList([]const u8).init(b.allocator);
-	defer {
-		for(relative_shader_paths.items) |ele|
-		{
-			b.allocator.free(ele);
-		}	
-		relative_shader_paths.deinit();
-	}
-	for (shader_sub_paths) |ssp| {
-		const abs_path = try std.fs.path.join(b.allocator, &.{ssp.source_base_path, ssp.subpath});
-		try relative_shader_paths.append(try std.fs.path.relative(b.allocator, build_dir, abs_path));
-	}
 
 	const intermediate_directory = try std.fs.path.join(b.allocator, &.{build_dir, "intermediate"});
 	defer b.allocator.free(intermediate_directory);
@@ -107,8 +85,7 @@ pub fn build(b: *std.Build) !void {
 		.{
 			.b = b,
 			.step = compile_shaders_step,
-			.build_dir_abs = build_dir,
-			.shader_files = relative_shader_paths.items,
+			.shader_files = shader_comp_entry,
 			.gfx_sdk_langs = &.{"VULKAN", "DIRECT3D11", "DIRECT3D12"},
 			.output_intermediate_dir = intermediate_directory,
 			.output_raw_sub_dir = "Shaders",

@@ -172,12 +172,16 @@ pub fn getFSLPyFile(allocator : std.mem.Allocator) !File
 	return fsl_dir.openFile(allocator, "fsl.py", .{});
 }
 
+pub const ShaderCompEntry = struct {
+	source_base_path: []const u8,
+	subpath: []const u8,
+};
+
 const CompileShadersOptions = struct
 {
     b: *std.Build,
 	step: *std.Build.Step,
-	build_dir_abs: []const u8,
-    shader_files: []const []const u8,
+    shader_files: []const ShaderCompEntry,
     gfx_sdk_langs: []const []const u8,
     output_intermediate_dir: []const u8,
 	output_raw_sub_dir: []const u8,
@@ -230,10 +234,15 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 
 		options.step.dependOn(&copy_shader_binary_to_output.step);
 
+		const abs_shader_path = try std.fs.path.join(options.b.allocator, &.{shader_file.source_base_path, shader_file.subpath});
+		defer options.b.allocator.free(abs_shader_path);
+		const relative_shader_path = try std.fs.path.relative(options.b.allocator, options.b.build_root.path.?, abs_shader_path);
+		defer options.b.allocator.free(relative_shader_path);
+
 		const argv = &.{
                 python_exe.str,
                 fsl_py_file.str,
-                shader_file,
+                relative_shader_path,
                 "--destination",
                 intermediate_shader_raw_directory,
                 "--binaryDestination",
@@ -252,12 +261,9 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 		fsl_py_run.setEnvironmentVariable("FSL_COMPILER_FXC", fxc_dir.str);
 		fsl_py_run.setEnvironmentVariable("FSL_COMPILER_DXC", dxc_dir.str);
 
-		//const alias_root_dir = alias_build_util.getAliasRootDirectory(options.b.allocator);
-		const abs_shader_file = try std.fs.path.resolve(options.b.allocator, &.{options.build_dir_abs, shader_file});
-		defer options.b.allocator.free(abs_shader_file);
 		var shader_file_handle = try alias_build_util.File.open(
 			options.b.allocator,
-			abs_shader_file,
+			abs_shader_path,
 			.{},
 		);
 		defer shader_file_handle.close();
@@ -284,7 +290,7 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 				std.debug.panic("Expected absolute path, found {s}", .{dir_content_abs});
 			}
 
-			const dir_content_relative = try std.fs.path.relative(options.b.allocator, options.build_dir_abs, dir_content_abs);
+			const dir_content_relative = try std.fs.path.relative(options.b.allocator, options.b.build_root.path.?, dir_content_abs);
 			defer options.b.allocator.free(dir_content_relative);
 
 			try shader_compile_deps.append(dir_content_relative);
