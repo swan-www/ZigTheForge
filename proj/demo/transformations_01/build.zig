@@ -39,13 +39,10 @@ pub fn build(b: *std.Build) !void {
     const transformations_src_dir = try std.fs.path.join(b.allocator, &.{alias_src_directory.str, "demo/transformations_01"});
 	defer b.allocator.free(transformations_src_dir);
 
-	const build_file = @src().file;
-	const build_dir = std.fs.path.dirname(build_file) orelse return BuildError.CouldNotResolveBuildDir;
-
 	const file_sub_paths : []const []const u8 = &.{
 		"main.cpp"
 	};
-	try alias_build_util.addCSourceFiles(b, exe, file_sub_paths, transformations_src_dir, build_dir,
+	try alias_build_util.addCSourceFiles(b, exe, file_sub_paths, transformations_src_dir,
 		&.{
 			"-Wno-unused-command-line-argument",
 			"-fno-sanitize=undefined"
@@ -78,7 +75,7 @@ pub fn build(b: *std.Build) !void {
 		.{ .source_base_path = tfalias_os_panini_projection_shader_dir, .subpath = "FSL/Panini_ShaderList.fsl"},
 	};
 
-	const intermediate_directory = try std.fs.path.join(b.allocator, &.{build_dir, "intermediate"});
+	const intermediate_directory = try std.fs.path.join(b.allocator, &.{b.cache_root.path.?, "shader_intermediate"});
 	defer b.allocator.free(intermediate_directory);
 
 	try tfalias.compileShaders(

@@ -20,9 +20,6 @@ pub fn build_as_lib(
     });
     statlib.linkLibC();
 
-	const build_file = @src().file;
-	const build_dir = std.fs.path.dirname(build_file) orelse return BuildError.CouldNotResolveBuildDir;
-
 	const file_sub_paths_cpp : []const []const u8 = &.{
 		"/Common_3/Graphics/CommonShaderReflection.cpp",
 		"/Common_3/Graphics/Direct3D11/Direct3D11.cpp" ,
@@ -46,7 +43,6 @@ pub fn build_as_lib(
 		statlib,
 		file_sub_paths_cpp,
 		tf_alias_dir.str,
-		build_dir, 
 		&.{
 			"-Wno-unused-command-line-argument",
             "-fno-sanitize=undefined"
@@ -62,7 +58,6 @@ pub fn build_as_lib(
 		statlib,
 		file_sub_paths_c,
 		tf_alias_dir.str,
-		build_dir, 
 		&.{
 			"-Wno-unused-command-line-argument",
             "-fno-sanitize=undefined"

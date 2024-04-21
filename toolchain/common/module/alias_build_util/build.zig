@@ -214,7 +214,6 @@ pub fn addCSourceFiles(
 	add_to: *std.Build.Step.Compile,
 	file_sub_paths: []const []const u8,
 	file_base_path: []const u8,
-	build_dir_path: []const u8,
 	flags: []const []const u8,
 ) !void
 {
@@ -228,7 +227,7 @@ pub fn addCSourceFiles(
 	}
 	for (file_sub_paths) |pt| {
 		const abs_path = try std.fs.path.join(b.allocator, &.{file_base_path, pt});
-		try relative_src_paths.append(try std.fs.path.relative(b.allocator, build_dir_path, abs_path));
+		try relative_src_paths.append(try std.fs.path.relative(b.allocator, b.build_root.path.?, abs_path));
 	}
 
 	add_to.addCSourceFiles(.{

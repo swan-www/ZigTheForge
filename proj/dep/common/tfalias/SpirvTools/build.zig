@@ -9,9 +9,6 @@ pub fn build_as_lib(
 	optimize: std.builtin.OptimizeMode,
 ) !*std.Build.Step.Compile 
 {
-	const build_file = @src().file;
-	const build_dir = std.fs.path.dirname(build_file) orelse return BuildError.CouldNotResolveBuildDir;
-
 	var tf_alias_dir = try alias_build_util.getTFAliasDirectory(b.allocator);
 	defer tf_alias_dir.close();
 
@@ -46,7 +43,6 @@ pub fn build_as_lib(
 		statlib,
 		file_sub_paths_cpp,
 		tf_alias_dir.str,
-		build_dir, 
 		&.{
 			"-Wno-unused-command-line-argument",
             "-fno-sanitize=undefined"
