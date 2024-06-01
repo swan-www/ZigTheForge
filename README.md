@@ -1,5 +1,7 @@
 # ZigTheForge
 
+\[Targeting Zig v0.12\]
+
 This repo aims to get the `01_Transformations` example of `TheForge` building using Zig as the build system, targeting `msvc` and building on windows. It provides build utilities that can be reused for other projects.
 
 
