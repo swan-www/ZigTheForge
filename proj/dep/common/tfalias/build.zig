@@ -412,6 +412,9 @@ pub fn linkRequiredLibs(
 			in_link_to.linkSystemLibrary2("odbc32", link_static_lib_options);
 			in_link_to.linkSystemLibrary2("odbccp32", link_static_lib_options);
 
+			in_link_to.linkSystemLibrary2("user32", link_static_lib_options);
+			in_link_to.linkSystemLibrary2("Winmm", link_static_lib_options);
+
 			{
 				const ags_archive_filename = try std.mem.join(in_b.allocator, "", &.{"amd_ags_x64", in_target.result.staticLibSuffix()});
 				defer in_b.allocator.free(ags_archive_filename);
