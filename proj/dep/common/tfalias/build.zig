@@ -181,6 +181,7 @@ const CompileShadersOptions = struct
 {
     b: *std.Build,
 	step: *std.Build.Step,
+	optimize: std.builtin.OptimizeMode,
     shader_files: []const ShaderCompEntry,
     gfx_sdk_langs: []const []const u8,
     output_intermediate_dir: []const u8,
@@ -239,6 +240,8 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 		const relative_shader_path = try std.fs.path.relative(options.b.allocator, options.b.build_root.path.?, abs_shader_path);
 		defer options.b.allocator.free(relative_shader_path);
 
+		const debug_arg = if(options.optimize == .Debug) "--debug" else "";
+
 		const argv = &.{
                 python_exe.str,
                 fsl_py_file.str,
@@ -254,7 +257,8 @@ pub fn compileShaders(options: CompileShadersOptions) !void
                 "--verbose",
 				"--reloadServerPort",
 				"6543",
-				"--cache-args"
+				"--cache-args",
+				debug_arg
 		};
 
 		const fsl_py_run = options.b.addSystemCommand(argv);
