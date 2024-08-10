@@ -240,8 +240,6 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 		const relative_shader_path = try std.fs.path.relative(options.b.allocator, options.b.build_root.path.?, abs_shader_path);
 		defer options.b.allocator.free(relative_shader_path);
 
-		const debug_arg = if(options.optimize == .Debug) "--debug" else "";
-
 		const argv = &.{
                 python_exe.str,
                 fsl_py_file.str,
@@ -258,10 +256,28 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 				"--reloadServerPort",
 				"6543",
 				"--cache-args",
-				debug_arg
 		};
 
-		const fsl_py_run = options.b.addSystemCommand(argv);
+		const argvDebug = &.{
+                python_exe.str,
+                fsl_py_file.str,
+                relative_shader_path,
+                "--destination",
+                intermediate_shader_raw_directory,
+                "--binaryDestination",
+                intermediate_shader_bin_directory,
+                "--language",
+                language_string,
+                "--incremental",
+                "--compile",
+                "--verbose",
+				"--reloadServerPort",
+				"6543",
+				"--cache-args",
+				"--debug",
+		};
+
+		const fsl_py_run = options.b.addSystemCommand(if(options.optimize == .Debug) argvDebug else argv);
 		fsl_py_run.setEnvironmentVariable("FSL_COMPILER_FXC", fxc_dir.str);
 		fsl_py_run.setEnvironmentVariable("FSL_COMPILER_DXC", dxc_dir.str);
 
