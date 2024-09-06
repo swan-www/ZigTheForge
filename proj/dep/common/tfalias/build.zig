@@ -1,5 +1,5 @@
 const std = @import("std");
-const alias_build_util = @import("alias_build_util");
+pub const alias_build_util = @import("alias_build_util");
 const code_reminder_build = @import("code_reminder");
 const code_reminder = code_reminder_build.code_reminder;
 
@@ -215,7 +215,7 @@ pub fn compileShaders(options: CompileShadersOptions) !void
     for(options.shader_files) |shader_file|
     {
 		const copy_shader_raw_to_output = options.b.addInstallDirectory(.{
-			.source_dir = .{ .path = intermediate_shader_raw_directory },
+			.source_dir = alias_build_util.lazy_from_path(intermediate_shader_raw_directory, options.b),
 			.install_subdir = options.output_raw_sub_dir,
 			.install_dir = .{
 				.bin = void{},
@@ -225,7 +225,7 @@ pub fn compileShaders(options: CompileShadersOptions) !void
 		options.step.dependOn(&copy_shader_raw_to_output.step);
 
 		const copy_shader_binary_to_output = options.b.addInstallDirectory(.{
-			.source_dir = .{ .path = intermediate_shader_bin_directory },
+			.source_dir = alias_build_util.lazy_from_path(intermediate_shader_bin_directory, options.b),
 			.install_subdir = options.output_bin_sub_dir,
 			.install_dir = .{
 				.bin = void{},
@@ -355,7 +355,7 @@ pub fn copyResources(options: CopyResourcesOptions) !void
 			}
 
 			return &b.addInstallFileWithDir(
-				std.Build.LazyPath{ .path = abs_source_path },
+				alias_build_util.lazy_from_path(abs_source_path, b),
 				std.Build.InstallDir{ .bin = void{}, },
 				in_resource_target.output_subpath,
 			).step;
@@ -371,7 +371,7 @@ pub fn copyResources(options: CopyResourcesOptions) !void
 			}
 
 			return &b.addInstallDirectory(.{
-				.source_dir = .{ .path = abs_source_path },
+				.source_dir = alias_build_util.lazy_from_path(abs_source_path, b),
 				.install_subdir = in_resource_target.output_subpath,				
 				.include_extensions = in_resource_target.include_extensions,
 				.exclude_extensions = in_resource_target.exclude_extensions,
@@ -440,7 +440,7 @@ pub fn linkRequiredLibs(
 				defer in_b.allocator.free(ags_archive_filename);
 				const ags_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/ags/ags_lib/lib", ags_archive_filename});
 				defer in_b.allocator.free(ags_archive_path);
-				in_link_to.addObjectFile(std.Build.LazyPath{.path = ags_archive_path});
+				in_link_to.addObjectFile(alias_build_util.lazy_from_path(ags_archive_path, in_b));
 			}
 
 			{
@@ -448,7 +448,7 @@ pub fn linkRequiredLibs(
 				defer in_b.allocator.free(nvapi_archive_filename);
 				const nvapi_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/nvapi/amd64", nvapi_archive_filename});
 				defer in_b.allocator.free(nvapi_archive_path);
-				in_link_to.addObjectFile(std.Build.LazyPath{.path = nvapi_archive_path});
+				in_link_to.addObjectFile(alias_build_util.lazy_from_path(nvapi_archive_path, in_b));
 			}
 
 			{
@@ -456,7 +456,7 @@ pub fn linkRequiredLibs(
 				defer in_b.allocator.free(dxcompiler_archive_filename);
 				const dxcompiler_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/Graphics/ThirdParty/OpenSource/DirectXShaderCompiler/lib/x64", dxcompiler_archive_filename});
 				defer in_b.allocator.free(dxcompiler_archive_path);
-				in_link_to.addObjectFile(std.Build.LazyPath{.path = dxcompiler_archive_path});
+				in_link_to.addObjectFile(alias_build_util.lazy_from_path(dxcompiler_archive_path, in_b));
 			}
 
 			{
@@ -464,7 +464,7 @@ pub fn linkRequiredLibs(
 				defer in_b.allocator.free(winpixeventruntime_archive_filename);
 				const winpixeventruntime_archive_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{tf_alias_dir.str, "Common_3/OS/ThirdParty/OpenSource/winpixeventruntime/bin", winpixeventruntime_archive_filename});
 				defer in_b.allocator.free(winpixeventruntime_archive_path);
-				in_link_to.addObjectFile(std.Build.LazyPath{.path = winpixeventruntime_archive_path});
+				in_link_to.addObjectFile(alias_build_util.lazy_from_path(winpixeventruntime_archive_path, in_b));
 			}
 
 			{

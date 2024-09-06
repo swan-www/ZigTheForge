@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const code_reminder_build = @import("code_reminder");
 const code_reminder = code_reminder_build.code_reminder;
 
@@ -235,6 +236,50 @@ pub fn addCSourceFiles(
         .flags = flags,
     });
 }
+
+pub const zig_version = builtin.zig_version;
+pub const build_path_type = blk: {
+	if(zig_version.major == 0)
+	{
+		if(zig_version.minor >= 12)
+		{
+			break :blk std.Build.LazyPath;
+		}
+		else unreachable;
+	}
+	else unreachable;
+};
+
+pub fn lazy_from_path(path_chars : []const u8, owner: *std.Build) std.Build.LazyPath
+{
+	if(zig_version.major == 0)
+	{
+		if(zig_version.minor >= 13)
+		{
+			return build_path_type{ .src_path = .{ .sub_path = path_chars, .owner = owner} };
+		}
+		else if(zig_version.minor >= 12)
+		{
+			return build_path_type{ .path = path_chars };
+		}
+		else unreachable;
+	}
+}
+
+pub fn install_header_path_fn(path_chars : []const u8, owner: *std.Build) build_path_type
+{
+	if(zig_version.major == 0)
+	{
+		if(zig_version.minor >= 12)
+		{
+			return lazy_from_path(path_chars, owner);
+		}
+		else unreachable;
+	}
+	else unreachable;
+}
+
+//=============================================
 
 test "alias_root_dir" {
 	const allocator = std.testing.allocator;

@@ -1,5 +1,35 @@
 const std = @import("std");
+const builtin = @import("builtin");
 pub const code_reminder = @import("code_reminder.zig");
+
+const zig_version = builtin.zig_version;
+pub const build_path_type = blk: {
+	if(zig_version.major == 0)
+	{
+		if(zig_version.minor >= 12)
+		{
+			break :blk std.Build.LazyPath;
+		}
+		else unreachable;
+	}
+	else unreachable;
+};
+
+pub fn lazy_from_path(path_chars : []const u8, owner: *std.Build) std.Build.LazyPath
+{
+	if(zig_version.major == 0)
+	{
+		if(zig_version.minor >= 13)
+		{
+			return build_path_type{ .src_path = .{ .sub_path = path_chars, .owner = owner} };
+		}
+		else if(zig_version.minor >= 12)
+		{
+			return build_path_type{ .path = path_chars };
+		}
+		else unreachable;
+	}
+}
 
 pub const BuildOptReturn = struct {
     options: code_reminder.CodeReminderOptions,
@@ -71,12 +101,12 @@ pub fn build(b: *std.Build) void {
     //_ = addCodeRemindersToBuildOptions(b, target, optimize);
 
     const code_reminder_mod = b.addModule("code_reminder", .{
-        .root_source_file = .{ .path = "code_reminder.zig" },
+        .root_source_file = lazy_from_path("code_reminder.zig", b),
     });
 
     //Aggregate all the modules in this package
     const module_code_reminder = b.addModule("module_code_reminder", .{
-        .root_source_file = .{ .path = "module_code_reminder.zig" },
+        .root_source_file =  lazy_from_path("module_code_reminder.zig", b),
         .imports = &.{.{ .name = "code_reminder", .module = code_reminder_mod }},
     });
     _ = module_code_reminder;

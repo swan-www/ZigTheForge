@@ -22,7 +22,7 @@ pub fn build_as_lib(
 
 	const spirvtools_include_dir = try std.fs.path.join(b.allocator, &.{tf_alias_dir.str, "Common_3/Application/ThirdParty/OpenSource/gainput/lib/include"});
 	defer b.allocator.free(spirvtools_include_dir);
-	statlib.addIncludePath(.{.path = spirvtools_include_dir});
+	statlib.addIncludePath(alias_build_util.lazy_from_path(spirvtools_include_dir, b));
 
 	const file_sub_paths_cpp : []const []const u8 = &.{
 		"/Common_3/Graphics/ThirdParty/OpenSource/SPIRV_Cross/SpirvTools.cpp",
