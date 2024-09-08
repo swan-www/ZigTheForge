@@ -149,6 +149,15 @@ pub fn getDXCDir(host: std.Target, allocator : std.mem.Allocator) !Dir
     }
 }
 
+pub fn getDefaultWin32ManifestFile(allocator : std.mem.Allocator) !File
+{
+    var tfalias_dir = try alias_build_util.getTFAliasDirectory(allocator);
+	defer tfalias_dir.close();
+	var manifest_dir_path = try alias_build_util.getDirAsSubpathFromDir(tfalias_dir, allocator, "Examples_3/Unit_Tests/PC Visual Studio 2019/", null);
+	defer manifest_dir_path.close();
+	return manifest_dir_path.openFile(allocator, "dpi-aware.manifest", .{});
+}
+
 pub fn getPythonExecutableFile(allocator : std.mem.Allocator) !File
 {
     var tfalias_dir = try alias_build_util.getTFAliasDirectory(allocator);
@@ -395,6 +404,12 @@ pub fn copyResources(options: CopyResourcesOptions) !void
 	}
 }
 
+pub const ProjectDefinesOptions = struct
+{
+    b: *std.Build,
+	exe: *std.Build.Step.Compile
+};
+
 const LinkError = error{UnsupportedTargetPlatform};
 
 pub fn linkRequiredLibs(
@@ -526,6 +541,38 @@ pub fn linkRequiredLibs(
 				defer in_b.allocator.free(dxcompiler_shared_lib_path_relative);
 
 				in_b.installBinFile(dxcompiler_shared_lib_path_relative, dxcompiler_shared_lib_filename);
+			}
+
+			{
+				in_link_to.root_module.addCMacro("D3D12_AGILITY_SDK", "1");
+				in_link_to.root_module.addCMacro("D3D12_AGILITY_SDK_VERSION", "611");
+
+				const d3d12core_lib_filename = try std.mem.join(in_b.allocator, "", &.{"D3D12Core", in_target.result.dynamicLibSuffix()});
+				defer in_b.allocator.free(d3d12core_lib_filename);
+				const d3d12sdklayers_lib_filename = try std.mem.join(in_b.allocator, "", &.{"d3d12SDKLayers", in_target.result.dynamicLibSuffix()});
+				defer in_b.allocator.free(d3d12sdklayers_lib_filename);
+
+				const d3d12core_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{
+					tf_alias_dir.str,
+					"Common_3/Graphics/ThirdParty/OpenSource/Direct3d12Agility/bin/x64",
+					d3d12core_lib_filename
+				});
+				defer in_b.allocator.free(d3d12core_lib_path);
+				const d3d12sdklayers_lib_path = try std.fs.path.join(in_b.allocator, &[_][]const u8{
+					tf_alias_dir.str,
+					"Common_3/Graphics/ThirdParty/OpenSource/Direct3d12Agility/bin/x64",
+					d3d12sdklayers_lib_filename
+				});
+				defer in_b.allocator.free(d3d12sdklayers_lib_path);
+
+
+				const d3d12core_lib_path_relative = try std.fs.path.relative(in_b.allocator, in_b.build_root.path.?, d3d12core_lib_path);
+				defer in_b.allocator.free(d3d12core_lib_path_relative);
+				const d3d12sdklayers_lib_path_relative = try std.fs.path.relative(in_b.allocator, in_b.build_root.path.?, d3d12sdklayers_lib_path);
+				defer in_b.allocator.free(d3d12sdklayers_lib_path_relative);
+
+				in_b.installBinFile(d3d12core_lib_path_relative, d3d12core_lib_filename);
+				in_b.installBinFile(d3d12sdklayers_lib_path_relative, d3d12sdklayers_lib_filename);
 			}
 		}
 	};
